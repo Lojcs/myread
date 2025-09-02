@@ -6,9 +6,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../helpers/extensions.dart';
-import 'comic_issue.dart';
-import 'issue_state.dart';
+import '../../../core/helpers/extensions.dart';
+import '../../../core/models/comic_issue_model.dart';
+import '../cubit/issues_cubit.dart';
 
 class IssueCard extends StatefulWidget {
   final String issueId;
@@ -43,7 +43,11 @@ class _IssueCardState extends State<IssueCard> {
     return Stack(
       alignment: AlignmentGeometry.center,
       children: [
-        BlocSelector<ComicIssues, Map<String, ComicIssue>, ComicIssue>(
+        BlocSelector<
+          ComicIssuesCubit,
+          Map<String, ComicIssueModel>,
+          ComicIssueModel
+        >(
           selector: (issues) => issues[widget.issueId]!,
           builder: (context, issue) {
             if (widget.animation != null) {
@@ -70,56 +74,59 @@ class _IssueCardState extends State<IssueCard> {
             key: infoKey,
           );
 
-  Widget getBody(BuildContext context, ComicIssue issue, Widget infoCard) =>
-      Card(
-        key: cardKey,
-        margin: marginTween.tryEvaluate(widget.animation),
-        color: context.colorScheme.surfaceContainerHigh,
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          alignment: AlignmentGeometry.bottomCenter,
-          children: [
-            SizedBox(
-              // These need to be anything for it to work
-              width: double.infinity,
-              height: double.infinity,
-              child: Material(
-                borderRadius: BorderRadius.circular(8),
-                clipBehavior: Clip.antiAlias,
-                child: Image(
-                  loadingBuilder:
-                      (context, child, loadingProgress) =>
-                          switch (loadingProgress) {
-                            ImageChunkEvent(
-                              cumulativeBytesLoaded: int loaded,
-                              expectedTotalBytes: int expected,
-                            ) =>
-                              Stack(
-                                alignment: AlignmentGeometry.center,
-                                children: [
-                                  SizedBox(
-                                    height: 100,
-                                    width: 100,
-                                    child: CircularProgressIndicator(
-                                      value: loaded / expected,
-                                    ),
-                                  ),
-                                ],
+  Widget getBody(
+    BuildContext context,
+    ComicIssueModel issue,
+    Widget infoCard,
+  ) => Card(
+    key: cardKey,
+    margin: marginTween.tryEvaluate(widget.animation),
+    color: context.colorScheme.surfaceContainerHigh,
+    clipBehavior: Clip.antiAlias,
+    child: Stack(
+      alignment: AlignmentGeometry.bottomCenter,
+      children: [
+        SizedBox(
+          // These need to be anything for it to work
+          width: double.infinity,
+          height: double.infinity,
+          child: Material(
+            borderRadius: BorderRadius.circular(8),
+            clipBehavior: Clip.antiAlias,
+            child: Image(
+              loadingBuilder:
+                  (context, child, loadingProgress) =>
+                      switch (loadingProgress) {
+                        ImageChunkEvent(
+                          cumulativeBytesLoaded: int loaded,
+                          expectedTotalBytes: int expected,
+                        ) =>
+                          Stack(
+                            alignment: AlignmentGeometry.center,
+                            children: [
+                              SizedBox(
+                                height: 100,
+                                width: 100,
+                                child: CircularProgressIndicator(
+                                  value: loaded / expected,
+                                ),
                               ),
-                            _ => child,
-                          },
-                  alignment: AlignmentGeometry.topCenter,
-                  fit: BoxFit.cover,
-                  image: NetworkImage(issue.imageUrl),
-                ),
-              ),
+                            ],
+                          ),
+                        _ => child,
+                      },
+              alignment: AlignmentGeometry.topCenter,
+              fit: BoxFit.cover,
+              image: issue.imageProvider,
             ),
-            if (widget.large) _tapOverlay(context),
-            infoCard,
-            if (!widget.large) _tapOverlay(context),
-          ],
+          ),
         ),
-      );
+        if (widget.large) _tapOverlay(context),
+        infoCard,
+        if (!widget.large) _tapOverlay(context),
+      ],
+    ),
+  );
 
   Widget _tapOverlay(BuildContext context) => Material(
     color: Colors.transparent,
@@ -212,7 +219,11 @@ class _IssueInfoCardState extends State<IssueInfoCard>
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<ComicIssues, Map<String, ComicIssue>, ComicIssue>(
+    return BlocSelector<
+      ComicIssuesCubit,
+      Map<String, ComicIssueModel>,
+      ComicIssueModel
+    >(
       selector: (issues) => issues[widget.issueId]!,
       builder: (context, issue) {
         if (widget.animation != null) {
@@ -229,7 +240,7 @@ class _IssueInfoCardState extends State<IssueInfoCard>
     );
   }
 
-  Widget getBody(BuildContext context, ComicIssue issue) {
+  Widget getBody(BuildContext context, ComicIssueModel issue) {
     final value = blurScaleTween.tryEvaluate(widget.animation);
     return Container(
       height:
@@ -275,7 +286,7 @@ class _IssueInfoCardState extends State<IssueInfoCard>
                     ),
                   ),
                   Text(
-                    issue.fullName,
+                    issue.displayName,
                     textAlign: TextAlign.center,
                     textScaler: TextScaler.linear(
                       textScaleTween.tryEvaluate(widget.animation),
@@ -369,7 +380,10 @@ class IssueCardDetailRoute extends ModalRoute {
     this.onDispose,
   }) : cardBox = cardKey.currentContext!.findRenderObject() as RenderBox,
        infoBox = infoKey.currentContext!.findRenderObject() as RenderBox {
-    sizeTween = Tween(begin: cardBox.size, end: Size(500, context.height));
+    sizeTween = Tween(
+      begin: cardBox.size,
+      end: Size(500, math.min(context.height, 750)),
+    );
     cardSize = cardBox.size;
     rawCardOffset = cardBox.localToGlobal(Offset.zero);
     infoSizeTween = Tween(begin: infoBox.size, end: Size(500, 400));
@@ -437,7 +451,7 @@ class IssueCardDetailRoute extends ModalRoute {
       curve: Curves.easeInOutCirc,
     );
     return GestureDetector(
-      behavior: HitTestBehavior.deferToChild,
+      behavior: HitTestBehavior.opaque,
       onTap: () => context.navigator.pop(),
       child: AnimatedBuilder(
         animation: animation,

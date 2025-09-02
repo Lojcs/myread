@@ -12,3 +12,8 @@ extension TweenExtension<T> on Tween<T> {
   T tryEvaluate(Animation<double>? animation) =>
       animation != null ? evaluate(animation) : begin!;
 }
+
+extension StringExtension on String {
+  int toInt() => int.parse(this);
+  double toDouble() => double.parse(this);
+}

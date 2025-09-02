@@ -5,9 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'comic_issue/issue_state.dart';
-import 'home/home.dart';
-import 'settings/settings_state.dart';
+import 'feature/home/cubit/issues_cubit.dart';
+import 'feature/home/screen/home.dart';
+import 'core/state/settings_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +22,7 @@ void main() async {
     MultiBlocProvider(
       providers: [
         BlocProvider.value(value: settings),
-        BlocProvider(create: (context) => ComicIssues()),
+        BlocProvider(create: (context) => ComicIssuesCubit()),
       ],
       child: const MyApp(),
     ),

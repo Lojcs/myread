@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 
-import '../search/comicvine_api.dart';
+import '../../feature/home/service/comicvine_api.dart';
 
 @immutable
 class SettingsState {

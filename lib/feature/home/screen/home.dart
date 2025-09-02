@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../comic_issue/comic_issue.dart';
-import '../comic_issue/issue_state.dart';
-import '../helpers/extensions.dart';
-import '../search/comicvine_api.dart';
-import '../settings/settings_state.dart';
-import '../comic_issue/issue_card.dart';
+import '../../../core/models/comic_issue_model.dart';
+import '../../../core/helpers/comic_parser.dart';
+import '../cubit/issues_cubit.dart';
+import '../../../core/helpers/extensions.dart';
+import '../service/comicvine_api.dart';
+import '../../../core/state/settings_state.dart';
+import 'issue_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -52,7 +53,10 @@ class _HomePageState extends State<HomePage> {
             ),
             Card(
               color: context.colorScheme.surfaceContainer,
-              child: BlocBuilder<ComicIssues, Map<String, ComicIssue>>(
+              child: BlocBuilder<
+                ComicIssuesCubit,
+                Map<String, ComicIssueModel>
+              >(
                 builder: (context, issues) {
                   final issueIds = issues.keys.toList();
                   return Column(
@@ -71,7 +75,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           hintText: "Search ComicVine",
                           onSubmitted: (value) async {
-                            final issues = BlocProvider.of<ComicIssues>(
+                            final issues = BlocProvider.of<ComicIssuesCubit>(
                               context,
                               listen: false,
                             );
@@ -138,7 +142,20 @@ class _HomePageState extends State<HomePage> {
                     allowedExtensions: ["cbz", "cbr"],
                   );
                   if (result != null) {
-                    // final file = ;
+                    final issues = BlocProvider.of<ComicIssuesCubit>(
+                      context,
+                      listen: false,
+                    );
+                    final apiKey =
+                        BlocProvider.of<Settings>(
+                          context,
+                          listen: false,
+                        ).state.apiKey!;
+                    final localComic = ComicParser(result.xFiles.first);
+                    final comicIssue = await localComic.getMetadata(apiKey);
+                    if (comicIssue != null) {
+                      issues.addIssue(comicIssue);
+                    }
                   }
                 },
                 child: SizedBox(
