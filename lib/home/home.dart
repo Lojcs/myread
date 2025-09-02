@@ -34,6 +34,7 @@ class _HomePageState extends State<HomePage> {
         padding: EdgeInsetsGeometry.all(8),
         child: Column(
           children: [
+            Center(), // This fixes alignment
             Card(
               color: context.colorScheme.surfaceContainerHigh,
               child: Padding(
@@ -51,83 +52,75 @@ class _HomePageState extends State<HomePage> {
             ),
             Card(
               color: context.colorScheme.surfaceContainer,
-              child: AnimatedSize(
-                alignment: AlignmentGeometry.topCenter,
-                curve: Curves.easeInOut,
-                duration: Duration(milliseconds: 300),
-                child: BlocBuilder<ComicIssues, Map<String, ComicIssue>>(
-                  builder: (context, issues) {
-                    final issueIds = issues.keys.toList();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: <Widget>[
-                        Padding(
-                          padding: EdgeInsetsGeometry.only(
-                            left: 12,
-                            right: 12,
-                            top: 12,
-                            bottom: issueIds.isEmpty ? 12 : 0,
+              child: BlocBuilder<ComicIssues, Map<String, ComicIssue>>(
+                builder: (context, issues) {
+                  final issueIds = issues.keys.toList();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Padding(
+                        padding: EdgeInsetsGeometry.only(
+                          left: 12,
+                          right: 12,
+                          top: 12,
+                          bottom: issueIds.isEmpty ? 12 : 0,
+                        ),
+                        child: SearchBar(
+                          backgroundColor: WidgetStateProperty.all(
+                            context.colorScheme.surfaceContainerHigh,
                           ),
-                          child: SearchBar(
-                            backgroundColor: WidgetStateProperty.all(
-                              context.colorScheme.surfaceContainerHigh,
+                          hintText: "Search ComicVine",
+                          onSubmitted: (value) async {
+                            final issues = BlocProvider.of<ComicIssues>(
+                              context,
+                              listen: false,
+                            );
+                            final apiKey =
+                                BlocProvider.of<Settings>(
+                                  context,
+                                  listen: false,
+                                ).state.apiKey!;
+                            final results = await ComicvineApi.query(
+                              value,
+                              apiKey,
+                            );
+                            results.forEach(issues.addIssue);
+                            if (searchScrollController.hasClients &&
+                                context.mounted) {
+                              searchScrollController.animateTo(
+                                searchScrollController
+                                        .position
+                                        .maxScrollExtent +
+                                    context.width / 2,
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          },
+                          trailing: [Icon(Icons.search, color: Colors.grey)],
+                        ),
+                      ),
+                      if (issueIds.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsetsGeometry.all(8),
+                          child: SizedBox(
+                            height: 260,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              controller: searchScrollController,
+                              itemExtent: 210,
+                              itemCount: issueIds.length,
+                              itemBuilder:
+                                  (context, index) =>
+                                      index < issueIds.length
+                                          ? IssueCard(issueIds[index])
+                                          : null,
                             ),
-                            hintText: "Search ComicVine",
-                            onSubmitted: (value) async {
-                              final issues = BlocProvider.of<ComicIssues>(
-                                context,
-                                listen: false,
-                              );
-                              final apiKey =
-                                  BlocProvider.of<Settings>(
-                                    context,
-                                    listen: false,
-                                  ).state.apiKey!;
-                              final results = await ComicvineApi.query(
-                                value,
-                                apiKey,
-                              );
-                              results.forEach(issues.addIssue);
-                              if (searchScrollController.hasClients) {
-                                searchScrollController.animateTo(
-                                  searchScrollController
-                                          .position
-                                          .maxScrollExtent +
-                                      210,
-                                  duration: Duration(milliseconds: 300),
-                                  curve: Curves.easeOut,
-                                );
-                              }
-                            },
-                            trailing: [Icon(Icons.search, color: Colors.grey)],
                           ),
                         ),
-                        if (issueIds.isNotEmpty)
-                          Padding(
-                            padding: EdgeInsetsGeometry.all(8),
-                            child: SizedBox(
-                              height: 260,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                controller: searchScrollController,
-                                itemExtent: 210,
-                                itemCount: issueIds.length,
-                                itemBuilder:
-                                    (context, index) =>
-                                        index < issueIds.length
-                                            ? IssueCard(
-                                              issueIds[index],
-                                              width: 210,
-                                              height: 260,
-                                            )
-                                            : null,
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
+                    ],
+                  );
+                },
               ),
             ),
             Card(
@@ -206,7 +199,7 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
             apiKey == ""
                 ? null
                 : () async {
-                  setState(() => keyInvalid = true);
+                  setState(() => keyInvalid = false);
                   final success = await BlocProvider.of<Settings>(
                     context,
                     listen: false,

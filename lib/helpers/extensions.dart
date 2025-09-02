@@ -7,3 +7,8 @@ extension ContextExtension on BuildContext {
   TextTheme get textTheme => TextTheme.of(this);
   NavigatorState get navigator => Navigator.of(this);
 }
+
+extension TweenExtension<T> on Tween<T> {
+  T tryEvaluate(Animation<double>? animation) =>
+      animation != null ? evaluate(animation) : begin!;
+}

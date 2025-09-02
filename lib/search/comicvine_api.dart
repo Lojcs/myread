@@ -30,11 +30,12 @@ class ComicvineApi {
       for (var result in results) {
         final id = int.parse(result.getElement('id')!.innerText);
         print(result.toString());
-        var name = result.getElement('name')!.innerText;
-        if (name == "") {
-          name = result.getElement('volume')!.getElement('name')!.innerText;
-        }
-        final number = int.parse(result.getElement('issue_number')!.innerText);
+        var title = result.getElement('name')?.innerText ?? "";
+        var name = result.getElement('volume')!.getElement('name')!.innerText;
+
+        final number = double.parse(
+          result.getElement('issue_number')!.innerText,
+        );
         final date = DateTime.parse(result.getElement('cover_date')!.innerText);
         final description = result.getElement('description')!.innerText;
         final image =
@@ -43,6 +44,7 @@ class ComicvineApi {
           ComicIssue.comicVine(
             comicVineId: id,
             name: name,
+            title: title,
             number: number,
             pubDate: date,
             description: description,
