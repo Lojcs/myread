@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:path/path.dart' as path;
 
 import '../../feature/home/service/comicvine_api.dart';
 
@@ -13,8 +16,20 @@ class SettingsState {
       SettingsState(apiKey: apiKey ?? this.apiKey);
 }
 
-class Settings extends HydratedCubit<SettingsState> {
-  Settings() : super(SettingsState());
+class SettingsCubit extends HydratedCubit<SettingsState> {
+  static late String _dataPath;
+  static String get dataPath => _dataPath;
+  static Future<void> setDataDir(Directory dir) async {
+    _dataPath = path.join(dir.path, "myread");
+    HydratedBloc.storage = await HydratedStorage.build(
+      storageDirectory:
+          kIsWeb
+              ? HydratedStorageDirectory.web
+              : HydratedStorageDirectory(dir.path),
+    );
+  }
+
+  SettingsCubit() : super(SettingsState());
 
   /// Checks if the api key works and saves it if it does. Returns success.
   Future<bool> trySetApiKey(String apiKey) async {

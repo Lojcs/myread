@@ -1,4 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as pathlib;
+
+import 'comic_parser.dart';
 
 extension ContextExtension on BuildContext {
   double get width => MediaQuery.of(this).size.width;
@@ -16,4 +21,14 @@ extension TweenExtension<T> on Tween<T> {
 extension StringExtension on String {
   int toInt() => int.parse(this);
   double toDouble() => double.parse(this);
+}
+
+extension FileSystemEntityExtension<T extends FileSystemEntity> on T {
+  String get name => path.split(Platform.pathSeparator).last;
+  String get extension => name.split(".").last;
+  bool get isImage =>
+      this is File && ComicParser.supportedImageExtensions.contains(extension);
+
+  bool get hidden => name.startsWith(".");
+  T move(String dir) => renameSync(pathlib.join(dir, name)) as T;
 }

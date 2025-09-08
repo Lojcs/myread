@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/helpers/extensions.dart';
 import '../../../core/models/comic_issue_model.dart';
+import '../../comic_viewer/viewer.dart';
 import '../cubit/issues_cubit.dart';
 
 class IssueCard extends StatefulWidget {
@@ -121,20 +122,27 @@ class _IssueCardState extends State<IssueCard> {
             ),
           ),
         ),
-        if (widget.large) _tapOverlay(context),
+        if (widget.large) _tapOverlay(context, issue),
         infoCard,
-        if (!widget.large) _tapOverlay(context),
+        if (!widget.large) _tapOverlay(context, issue),
       ],
     ),
   );
 
-  Widget _tapOverlay(BuildContext context) => Material(
+  Widget _tapOverlay(BuildContext context, ComicIssueModel issue) => Material(
     color: Colors.transparent,
     child: InkWell(
       onTap:
           () =>
               widget.large
-                  ? context.navigator.pop()
+                  ? issue.file != null
+                      ? context.navigator.push(
+                        MaterialPageRoute(
+                          builder:
+                              (context) => ComicViewer(issueId: widget.issueId),
+                        ),
+                      )
+                      : context.navigator.pop()
                   : context.navigator.push(
                     IssueCardDetailRoute(
                       context,
@@ -177,7 +185,7 @@ class _IssueInfoCardState extends State<IssueInfoCard>
   final Tween<double> heightTransitionTween = Tween(begin: 120, end: 350);
   final Tween<double> enlargeButtonHeightTween = Tween(begin: 0, end: 20);
   Tween<double> get heightTween =>
-      widget.largeInfo ? largeHeightTween : smallHeightTween;
+      _sizeAnimationController.value == 1 ? largeHeightTween : smallHeightTween;
   final EdgeInsetsTween marginTween = EdgeInsetsTween(
     begin: EdgeInsets.symmetric(horizontal: 8, vertical: 20),
     end: EdgeInsets.symmetric(horizontal: 50, vertical: 100),
@@ -194,15 +202,15 @@ class _IssueInfoCardState extends State<IssueInfoCard>
     _sizeAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
-    )..addListener(
-      () => setState(() {
-        sizeAnimationRunning = true;
-      }),
-    );
+    )..addListener(() => setState(() => sizeAnimationRunning = true));
     _sizeAnimation = CurvedAnimation(
       parent: _sizeAnimationController,
       curve: Curves.easeInOutCirc,
     );
+    if (widget.largeInfo) {
+      _sizeAnimationController.value = 1;
+      sizeAnimationRunning = false;
+    }
   }
 
   @override
@@ -296,6 +304,18 @@ class _IssueInfoCardState extends State<IssueInfoCard>
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (issue.title != null)
+                    Text(
+                      issue.title!,
+                      textAlign: TextAlign.center,
+                      textScaler: TextScaler.linear(
+                        textScaleTween.tryEvaluate(widget.animation),
+                      ),
+                      style: GoogleFonts.ibmPlexSans(
+                        textStyle: context.textTheme.bodyMedium,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   Html(
                     data: issue.description,
                     style: {

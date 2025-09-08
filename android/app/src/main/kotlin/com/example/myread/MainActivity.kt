@@ -1,4 +1,4 @@
-package com.example.myread
+package dev.lojcs.myread
 
 import io.flutter.embedding.android.FlutterActivity
 

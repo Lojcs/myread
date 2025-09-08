@@ -1,14 +1,11 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/models/comic_issue_model.dart';
-import '../../../core/helpers/comic_parser.dart';
-import '../cubit/issues_cubit.dart';
+import '../cubit/home_cubit.dart';
 import '../../../core/helpers/extensions.dart';
-import '../service/comicvine_api.dart';
 import '../../../core/state/settings_state.dart';
+import 'api_key_dialog.dart';
 import 'issue_card.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,17 +16,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  late final cubit = HomeCubit(context);
+  double previousSearchListMaxExtent = 0;
+  final searchScrollController = ScrollController();
+
   @override
   Widget build(BuildContext context) {
-    final searchScrollController = ScrollController();
-    if (BlocProvider.of<Settings>(context, listen: false).state.apiKey ==
-        null) {
-      Future.microtask(() {
-        if (context.mounted) {
-          showDialog(context: context, builder: (context) => ApiKeyDialog());
-        }
-      });
-    }
     return Scaffold(
       body: Padding(
         padding: EdgeInsetsGeometry.all(8),
@@ -53,12 +45,19 @@ class _HomePageState extends State<HomePage> {
             ),
             Card(
               color: context.colorScheme.surfaceContainer,
-              child: BlocBuilder<
-                ComicIssuesCubit,
-                Map<String, ComicIssueModel>
-              >(
-                builder: (context, issues) {
-                  final issueIds = issues.keys.toList();
+              child: BlocSelector<HomeCubit, HomeState, List<String>>(
+                bloc: cubit,
+                selector: (state) => state.searchIssueIds,
+                builder: (context, issueIds) {
+                  if (searchScrollController.hasClients && context.mounted) {
+                    searchScrollController.animateTo(
+                      previousSearchListMaxExtent + context.width / 2,
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                    previousSearchListMaxExtent =
+                        searchScrollController.position.maxScrollExtent;
+                  }
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
@@ -74,31 +73,21 @@ class _HomePageState extends State<HomePage> {
                             context.colorScheme.surfaceContainerHigh,
                           ),
                           hintText: "Search ComicVine",
-                          onSubmitted: (value) async {
-                            final issues = BlocProvider.of<ComicIssuesCubit>(
-                              context,
-                              listen: false,
-                            );
-                            final apiKey =
-                                BlocProvider.of<Settings>(
+                          onSubmitted: cubit.onSearch,
+                          onTap: () {
+                            if (BlocProvider.of<SettingsCubit>(
                                   context,
                                   listen: false,
-                                ).state.apiKey!;
-                            final results = await ComicvineApi.query(
-                              value,
-                              apiKey,
-                            );
-                            results.forEach(issues.addIssue);
-                            if (searchScrollController.hasClients &&
-                                context.mounted) {
-                              searchScrollController.animateTo(
-                                searchScrollController
-                                        .position
-                                        .maxScrollExtent +
-                                    context.width / 2,
-                                duration: Duration(milliseconds: 300),
-                                curve: Curves.easeOut,
-                              );
+                                ).state.apiKey ==
+                                null) {
+                              Future.microtask(() {
+                                if (context.mounted) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => ApiKeyDialog(),
+                                  );
+                                }
+                              });
                             }
                           },
                           trailing: [Icon(Icons.search, color: Colors.grey)],
@@ -111,14 +100,13 @@ class _HomePageState extends State<HomePage> {
                             height: 260,
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
+                              shrinkWrap: true,
                               controller: searchScrollController,
                               itemExtent: 210,
                               itemCount: issueIds.length,
                               itemBuilder:
                                   (context, index) =>
-                                      index < issueIds.length
-                                          ? IssueCard(issueIds[index])
-                                          : null,
+                                      IssueCard(issueIds[index]),
                             ),
                           ),
                         ),
@@ -128,41 +116,64 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             Card(
-              clipBehavior: Clip.antiAlias,
-              child: TextButton(
-                style: ButtonStyle(
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                onPressed: () async {
-                  final result = await FilePicker.platform.pickFiles(
-                    type: FileType.custom,
-                    allowedExtensions: ["cbz", "cbr"],
-                  );
-                  if (result != null) {
-                    final issues = BlocProvider.of<ComicIssuesCubit>(
-                      context,
-                      listen: false,
+              color: context.colorScheme.surfaceContainer,
+              child: BlocSelector<HomeCubit, HomeState, List<String>>(
+                bloc: cubit,
+                selector: (state) => state.localIssueIds,
+                builder: (context, issueIds) {
+                  if (searchScrollController.hasClients && context.mounted) {
+                    searchScrollController.animateTo(
+                      previousSearchListMaxExtent + context.width / 2,
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
                     );
-                    final apiKey =
-                        BlocProvider.of<Settings>(
-                          context,
-                          listen: false,
-                        ).state.apiKey!;
-                    final localComic = ComicParser(result.xFiles.first);
-                    final comicIssue = await localComic.getMetadata(apiKey);
-                    if (comicIssue != null) {
-                      issues.addIssue(comicIssue);
-                    }
+                    previousSearchListMaxExtent =
+                        searchScrollController.position.maxScrollExtent;
                   }
+                  return Padding(
+                    padding: EdgeInsetsGeometry.all(8),
+                    child: SizedBox(
+                      height: 260,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        shrinkWrap: true,
+                        controller: searchScrollController,
+                        itemExtent: 210,
+                        itemCount: issueIds.length + 1,
+                        itemBuilder:
+                            (context, index) =>
+                                index < issueIds.length
+                                    ? IssueCard(issueIds[index])
+                                    : Container(
+                                      margin: EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: TextButton(
+                                        style: ButtonStyle(
+                                          shape: WidgetStatePropertyAll(
+                                            RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.zero,
+                                            ),
+                                          ),
+                                        ),
+                                        onPressed: cubit.onAddFile,
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text("Add comic file"),
+                                              Icon(Icons.add),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                      ),
+                    ),
+                  );
                 },
-                child: SizedBox(
-                  height: 64,
-                  width: 144,
-                  child: Center(child: Text("Add comic file")),
-                ),
               ),
             ),
           ],
@@ -170,67 +181,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
-
-class ApiKeyDialog extends StatefulWidget {
-  const ApiKeyDialog({super.key});
-
-  @override
-  State<StatefulWidget> createState() => _ApiKeyDialogState();
-}
-
-class _ApiKeyDialogState extends State<ApiKeyDialog> {
-  String apiKey = "";
-  bool keyInvalid = false;
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text("Comicvine API key is needed"),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(
-          decoration: InputDecoration(
-            filled: true,
-            contentPadding: EdgeInsets.symmetric(horizontal: 10),
-            hintText: "ComicVine API key",
-            hintStyle: TextStyle(fontSize: 18),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: context.colorScheme.primary),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.transparent),
-            ),
-          ),
-          onChanged: (value) => setState(() => apiKey = value),
-        ),
-      ],
-    ),
-    actions: [
-      if (keyInvalid)
-        Text(
-          "⚠️Key is invalid⚠️",
-          style: context.textTheme.bodyMedium!.copyWith(color: Colors.red),
-        ),
-      TextButton(
-        onPressed:
-            apiKey == ""
-                ? null
-                : () async {
-                  setState(() => keyInvalid = false);
-                  final success = await BlocProvider.of<Settings>(
-                    context,
-                    listen: false,
-                  ).trySetApiKey(apiKey);
-                  if (success) {
-                    if (context.mounted) {
-                      context.navigator.pop();
-                    }
-                  } else {
-                    setState(() => keyInvalid = true);
-                  }
-                },
-        child: Text("Save"),
-      ),
-    ],
-  );
 }

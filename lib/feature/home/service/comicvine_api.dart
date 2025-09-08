@@ -1,8 +1,4 @@
-import 'dart:convert';
-import 'dart:developer' as dev;
-
 import 'package:dio/dio.dart';
-import 'package:xml/xml.dart';
 
 import '../../../core/models/comic_issue_model.dart';
 import '../../../core/utils/json_parser.dart';

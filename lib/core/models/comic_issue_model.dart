@@ -1,11 +1,13 @@
 import 'dart:io';
 
-import 'package:cross_file/cross_file.dart';
+import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
+import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
 import '../helpers/extensions.dart';
+import '../state/settings_state.dart';
 
 const String comicVineIssueNamespace = "68d81497-b579-47a1-baf7-4331f0c7172b";
 const String comicVineVolumeNamespace = "d072db0d-5410-4e1a-9f1a-b2a1b0c38800";
@@ -58,7 +60,18 @@ class ComicIssueModel extends Equatable {
   final double? userRating;
 
   /// Local file
-  final XFile? file;
+  final File? file;
+
+  String get dataPath => path.join(SettingsCubit.dataPath, id);
+
+  Future<List<File>> getImages() async {
+    final images =
+        await Directory(path.join(dataPath, "images")).list().toList();
+    return images
+        .map((e) => e.isImage ? e as File : null)
+        .nonNulls
+        .sortedByCompare((e) => e.name, compareNatural);
+  }
 
   /// Id in ComicVine
   final int? comicVineId;
@@ -135,7 +148,7 @@ class ComicIssueModel extends Equatable {
     String? imageUrl,
     bool? read,
     double? userRating,
-    XFile? file,
+    File? file,
     int? comicVineId,
   }) {
     return ComicIssueModel(
@@ -180,6 +193,5 @@ class ComicVolume extends Equatable {
   }) : id = Uuid().v5(comicVineVolumeNamespace, comicVineId.toString());
 
   @override
-  // TODO: implement props
-  List<Object?> get props => throw UnimplementedError();
+  List<Object?> get props => [id];
 }
