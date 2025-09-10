@@ -50,6 +50,7 @@ dependencies:
   xml: ^6.6.1
   interactive_viewer_2: ^0.0.10
   matrix4_transform: ^4.0.1
+  line_icons: ^2.0.3
 dependency_overrides:
   interactive_viewer_2:
     git: https://github.com/Lojcs/interactive_viewer_2

@@ -1,8 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as pathlib;
 
+import '../../feature/home/cubit/issues_cubit.dart';
+import '../state/settings_state.dart';
 import 'comic_parser.dart';
 
 extension ContextExtension on BuildContext {
@@ -11,6 +14,13 @@ extension ContextExtension on BuildContext {
   ColorScheme get colorScheme => ColorScheme.of(this);
   TextTheme get textTheme => TextTheme.of(this);
   NavigatorState get navigator => Navigator.of(this);
+}
+
+extension GlobalStateExtension on BuildContext {
+  SettingsCubit get settingsState =>
+      BlocProvider.of<SettingsCubit>(this, listen: false);
+  ComicIssuesCubit get issuesState =>
+      BlocProvider.of<ComicIssuesCubit>(this, listen: false);
 }
 
 extension TweenExtension<T> on Tween<T> {

@@ -25,62 +25,77 @@ class _ComicViewerState extends State<ComicViewer> {
   late Matrix4 lastTransform;
   late double lastWidth;
 
+  late final imageKey = GlobalKey();
+
+  ComicIssueModel get issue => context.issuesState.state[widget.issueId]!;
+
   @override
   Widget build(BuildContext context) {
     if (firstBuild) {
       firstBuild = false;
       lastWidth = context.width;
-      lastTransform =
-          Matrix4Transform().scale(math.min(800 / context.width, 1)).matrix4;
+      lastTransform = issue.userData!.transform;
+      if (lastTransform.isIdentity()) {
+        final double scale = math.min(800 / context.width, 1);
+        lastTransform.scaleByDouble(scale, scale, scale, 1);
+      }
       controller = TransformationController(lastTransform)..addListener(() {
         lastTransform = controller.value;
+        print(lastTransform);
       });
     }
     // Window resize correction.
-    final up = lastTransform.toScene(Offset.zero).dy;
+    final up = lastTransform.getTranslation().y;
     final scale = controller.value.getScaleOnYAxis();
-    final scaledUp = up * scale;
     final widthScale = context.width / lastWidth;
     controller.value =
-        Matrix4Transform().scale(scale).up(scaledUp * widthScale).matrix4;
+        Matrix4.identity()
+          ..scaleByDouble(scale, scale, scale, 1)
+          ..leftTranslateByDouble(0, up * widthScale, 0, 1);
 
     lastWidth = context.width;
-    return BlocSelector<
-      ComicIssuesCubit,
-      Map<String, ComicIssueModel>,
-      ComicIssueModel
-    >(
-      selector: (issues) => issues[widget.issueId]!,
-      builder: (context, issue) {
-        return Scaffold(
-          appBar: AppBar(title: Text(issue.displayName)),
-          body: InteractiveViewer2(
-            transformationController: controller,
-            child: FutureBuilder<List<File>>(
-              future: issue.getImages(),
-              builder:
-                  (context, snapshot) =>
-                      snapshot.hasData
-                          ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children:
-                                snapshot.data!
-                                    .map(
-                                      (file) => Image(
-                                        width: context.width,
-                                        image: FileImage(file),
-                                      ),
-                                    )
-                                    .toList(),
-                          )
-                          : SizedBox(
-                            width: context.width,
-                            height: context.height * 2,
-                          ),
-            ),
-          ),
-        );
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        final imageBox =
+            imageKey.currentContext!.findRenderObject() as RenderBox;
+        final ratio =
+            -lastTransform.getTranslation().y /
+            lastTransform.getScaleOnYAxis() /
+            imageBox.size.height;
+        context.issuesState.setReadRatio(widget.issueId, ratio);
+        context.issuesState.setTransform(widget.issueId, lastTransform);
       },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(context.issuesState.state[widget.issueId]!.displayName),
+        ),
+        body: InteractiveViewer2(
+          transformationController: controller,
+          child: FutureBuilder<List<File>>(
+            future: context.issuesState.state[widget.issueId]!.getImages(),
+            builder:
+                (context, snapshot) =>
+                    snapshot.hasData
+                        ? Column(
+                          key: imageKey,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children:
+                              snapshot.data!
+                                  .map(
+                                    (file) => Image(
+                                      width: context.width,
+                                      image: FileImage(file),
+                                    ),
+                                  )
+                                  .toList(),
+                        )
+                        : SizedBox(
+                          width: context.width,
+                          height: double.maxFinite,
+                        ),
+          ),
+        ),
+      ),
     );
   }
 }

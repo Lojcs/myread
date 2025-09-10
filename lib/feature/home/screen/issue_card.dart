@@ -10,6 +10,7 @@ import '../../../core/helpers/extensions.dart';
 import '../../../core/models/comic_issue_model.dart';
 import '../../comic_viewer/viewer.dart';
 import '../cubit/issues_cubit.dart';
+import 'issue_info_bar.dart';
 
 class IssueCard extends StatefulWidget {
   final String issueId;
@@ -266,87 +267,89 @@ class _IssueInfoCardState extends State<IssueInfoCard>
       clipBehavior: Clip.antiAlias,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 6 * value, sigmaY: 2 * value),
-        child: Stack(
-          alignment: AlignmentGeometry.topCenter,
-          children: [
-            SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: enlargeButtonHeightTween.tryEvaluate(
-                      widget.animation,
-                    ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: () {
-                        if (_sizeAnimationController.value == 0) {
-                          _sizeAnimationController.forward();
-                        } else {
-                          _sizeAnimationController.reverse();
-                        }
-                      },
-                      icon: Icon(
-                        _sizeAnimationController.value == 0
-                            ? Icons.arrow_drop_up
-                            : Icons.arrow_drop_down,
-                      ),
-                    ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Material(
+                type: MaterialType.transparency,
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  height: enlargeButtonHeightTween.tryEvaluate(
+                    widget.animation,
                   ),
-                  Text(
-                    issue.displayName,
-                    textAlign: TextAlign.center,
-                    textScaler: TextScaler.linear(
-                      textScaleTween.tryEvaluate(widget.animation),
-                    ),
-                    style: GoogleFonts.ibmPlexSans(
-                      textStyle: context.textTheme.bodyMedium,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (issue.title != null)
-                    Text(
-                      issue.title!,
-                      textAlign: TextAlign.center,
-                      textScaler: TextScaler.linear(
-                        textScaleTween.tryEvaluate(widget.animation),
-                      ),
-                      style: GoogleFonts.ibmPlexSans(
-                        textStyle: context.textTheme.bodyMedium,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  Html(
-                    data: issue.description,
-                    style: {
-                      "*": Style(
-                        textAlign: TextAlign.center,
-                        // fontWeight: FontWeight.bold,
-                      ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () {
+                      if (_sizeAnimationController.value == 0) {
+                        _sizeAnimationController.forward();
+                      } else {
+                        _sizeAnimationController.reverse();
+                      }
                     },
-                  ),
-                  Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: TextButton(
-                      style: ButtonStyle(
-                        shape: WidgetStatePropertyAll(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.zero,
-                          ),
-                        ),
-                      ),
-                      onPressed: () {},
-                      child: SizedBox(
-                        height: 48,
-                        width: 72,
-                        child: Center(child: Text("Add file")),
-                      ),
+                    icon: Icon(
+                      _sizeAnimationController.value == 0
+                          ? Icons.arrow_drop_up
+                          : Icons.arrow_drop_down,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: EdgeInsetsGeometry.only(bottom: 4),
+                child: Text(
+                  issue.displayName,
+                  textAlign: TextAlign.center,
+                  textScaler: TextScaler.linear(
+                    textScaleTween.tryEvaluate(widget.animation),
+                  ),
+                  style: GoogleFonts.ibmPlexSans(
+                    textStyle: context.textTheme.bodyMedium,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              IssueInfoBar(widget.issueId),
+              if (issue.title != null)
+                Text(
+                  issue.title!,
+                  textAlign: TextAlign.center,
+                  textScaler: TextScaler.linear(
+                    textScaleTween.tryEvaluate(widget.animation),
+                  ),
+                  style: GoogleFonts.ibmPlexSans(
+                    textStyle: context.textTheme.bodyMedium,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              Html(
+                data: issue.description,
+                style: {
+                  "*": Style(
+                    textAlign: TextAlign.center,
+                    // fontWeight: FontWeight.bold,
+                  ),
+                },
+              ),
+              if (issue.file == null)
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: TextButton(
+                    style: ButtonStyle(
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                      ),
+                    ),
+                    onPressed: () {},
+                    child: SizedBox(
+                      height: 48,
+                      width: 72,
+                      child: Center(child: Text("Add file")),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -402,19 +405,19 @@ class IssueCardDetailRoute extends ModalRoute {
        infoBox = infoKey.currentContext!.findRenderObject() as RenderBox {
     sizeTween = Tween(
       begin: cardBox.size,
-      end: Size(500, math.min(context.height, 750)),
+      end: Size(450, math.min(context.height, 725)),
     );
     cardSize = cardBox.size;
     rawCardOffset = cardBox.localToGlobal(Offset.zero);
-    infoSizeTween = Tween(begin: infoBox.size, end: Size(500, 400));
+    infoSizeTween = Tween(begin: infoBox.size, end: Size(450, 400));
     infoSize = infoBox.size;
     rawInfoOffset = infoBox.localToGlobal(Offset.zero);
   }
 
   static const nestedCardOffset = Offset(0, 0);
-  static const sideCardOffset = Offset(-250, 0);
+  static const sideCardOffset = Offset(-200, 0);
   static const nestedInfoOffset = Offset(0, 150);
-  static const sideInfoOffset = Offset(250, 0);
+  static const sideInfoOffset = Offset(220, 0);
 
   @override
   void dispose() {
@@ -435,7 +438,7 @@ class IssueCardDetailRoute extends ModalRoute {
   bool primaryAnimation = true;
   bool? sideBySide;
 
-  bool newSideBySide(BuildContext context) => context.width >= 1000;
+  bool newSideBySide(BuildContext context) => context.width >= 800;
 
   @override
   Widget buildPage(

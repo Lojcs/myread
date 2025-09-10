@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
@@ -53,11 +54,8 @@ class ComicIssueModel extends Equatable {
   ImageProvider get imageProvider =>
       imagePath != null ? FileImage(File(imagePath!)) : NetworkImage(imageUrl!);
 
-  /// User read mark
-  final bool read;
-
-  /// User rating. 0-1.
-  final double? userRating;
+  /// User data about the issue. In practice this is not null.
+  final IssueUserData? userData;
 
   /// Local file
   final File? file;
@@ -87,8 +85,7 @@ class ComicIssueModel extends Equatable {
     required this.description,
     required this.imagePath,
     required this.imageUrl,
-    required this.read,
-    required this.userRating,
+    required this.userData,
     this.file,
     this.comicVineId,
   });
@@ -104,9 +101,8 @@ class ComicIssueModel extends Equatable {
     required this.description,
     this.imagePath,
     required this.imageUrl,
+    this.userData,
     this.file,
-    this.read = false,
-    this.userRating,
   }) : id = Uuid().v5(comicVineIssueNamespace, comicVineId.toString());
 
   ComicIssueModel.fromFile({
@@ -120,14 +116,30 @@ class ComicIssueModel extends Equatable {
     this.description = "",
     this.imagePath,
     this.imageUrl,
-    this.read = false,
-    this.userRating,
+    this.userData,
     this.comicVineId,
   }) : volume = volume?.toInt(),
        number = number?.toDouble(),
        pubDate = DateTime(int.parse(year)) {
     id = Uuid().v5(issueDisplayNameNamespace, displayName);
   }
+
+  ComicIssueModel.fromUserData({
+    required IssueUserData this.userData,
+    this.title,
+    this.name = "",
+    this.volume,
+    this.number,
+    this.legacyNumber,
+    int? year,
+    this.description = "",
+    this.imagePath,
+    this.imageUrl,
+    this.file,
+    this.comicVineId,
+  }) : id = userData.issueId,
+       pubDate = year != null ? DateTime(year) : DateTime.now();
+
   String get volumeName => "$name$volumeString (${pubDate.year})";
 
   String get displayName => "$volumeName$numberString";
@@ -146,8 +158,7 @@ class ComicIssueModel extends Equatable {
     String? description,
     String? imagePath,
     String? imageUrl,
-    bool? read,
-    double? userRating,
+    IssueUserData? userData,
     File? file,
     int? comicVineId,
   }) {
@@ -162,12 +173,130 @@ class ComicIssueModel extends Equatable {
       description: description ?? this.description,
       imagePath: imagePath ?? this.imagePath,
       imageUrl: imageUrl ?? this.imageUrl,
-      read: read ?? this.read,
-      userRating: userRating ?? this.userRating,
+      userData: userData ?? this.userData?.copyWith(issueId: id ?? this.id),
       file: file ?? this.file,
       comicVineId: comicVineId ?? this.comicVineId,
     );
   }
+
+  ComicIssueModel copyWithUserData({
+    double? readRatio,
+    DateTime? lastAccessed,
+    double? userRating,
+    Matrix4? transform,
+    bool clearRating = false,
+    String? userNote,
+  }) => copyWith(
+    userData: (userData ?? IssueUserData.blank(issueId: id)).copyWith(
+      readRatio: readRatio,
+      transform: transform,
+      lastAccessed: lastAccessed,
+      userRating: userRating,
+      clearRating: clearRating,
+      userNote: userNote,
+    ),
+  );
+
+  ComicIssueModel mergeUserData(covariant ComicIssueModel? other) => copyWith(
+    userData: switch ((userData, other?.userData)) {
+      (null, null) => IssueUserData.blank(issueId: id),
+      (null, IssueUserData data) => data,
+      (IssueUserData data, null) => data,
+      (var data1!, var data2!) => data1.merge(data2),
+    },
+  );
+}
+
+class IssueUserData extends Equatable {
+  /// Issue uuid.
+  final String issueId;
+
+  /// User read ratio. 0-1
+  final double readRatio;
+
+  /// Last transform applied to the concatanated images of the issue.
+  final Matrix4 transform;
+
+  /// When read mark was set.
+  final DateTime lastAccessed;
+
+  /// User rating. 0-1.
+  final double? userRating;
+
+  /// User notes.
+  final String userNote;
+
+  const IssueUserData({
+    required this.issueId,
+    required this.readRatio,
+    required this.transform,
+    required this.lastAccessed,
+    required this.userRating,
+    required this.userNote,
+  });
+
+  IssueUserData.blank({required this.issueId})
+    : readRatio = 0,
+      transform = Matrix4.identity(),
+      lastAccessed = DateTime.now(),
+      userRating = null,
+      userNote = "";
+
+  IssueUserData.fromJson(Map<String, dynamic> json)
+    : issueId = json['id'],
+      readRatio = json['readRatio'],
+      transform = Matrix4.fromList(json['transform']),
+      lastAccessed = DateTime.fromMillisecondsSinceEpoch(json['aTime']),
+      userRating = json['rating'],
+      userNote = json['note'];
+
+  Map<String, dynamic> toJson() => {
+    'id': issueId,
+    'readRatio': readRatio,
+    'transform': transform.storage,
+    'aTime': lastAccessed.millisecondsSinceEpoch,
+    'rating': userRating,
+    'note': userNote,
+  };
+
+  IssueUserData copyWith({
+    String? issueId,
+    double? readRatio,
+    Matrix4? transform,
+    DateTime? lastAccessed,
+    double? userRating,
+    bool clearRating = false,
+    String? userNote,
+  }) => IssueUserData(
+    issueId: issueId ?? this.issueId,
+    readRatio: readRatio ?? this.readRatio,
+    transform: transform ?? this.transform,
+    lastAccessed: lastAccessed ?? this.lastAccessed,
+    userRating: clearRating ? null : (userRating ?? this.userRating),
+    userNote: userNote ?? this.userNote,
+  );
+
+  IssueUserData merge(covariant IssueUserData other) => IssueUserData(
+    issueId: issueId,
+    readRatio: math.max(other.readRatio, readRatio),
+    transform: other.readRatio > readRatio ? other.transform : transform,
+    lastAccessed:
+        other.lastAccessed.compareTo(lastAccessed) > 0
+            ? other.lastAccessed
+            : lastAccessed,
+    userRating: other.userRating ?? userRating,
+    userNote: other.userNote != "" ? other.userNote : userNote,
+  );
+
+  @override
+  List<Object?> get props => [
+    issueId,
+    readRatio,
+    transform,
+    lastAccessed,
+    userRating,
+    userNote,
+  ];
 }
 
 class ComicVolume extends Equatable {
@@ -177,7 +306,7 @@ class ComicVolume extends Equatable {
   final DateTime date;
   final int? comicVineId;
 
-  ComicVolume({
+  const ComicVolume({
     required this.id,
     required this.name,
     required this.number,
