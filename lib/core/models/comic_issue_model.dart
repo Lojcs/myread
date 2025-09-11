@@ -8,7 +8,7 @@ import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
 import '../helpers/extensions.dart';
-import '../state/settings_state.dart';
+import '../../feature/settings/cubit/settings_cubit.dart';
 
 const String comicVineIssueNamespace = "68d81497-b579-47a1-baf7-4331f0c7172b";
 const String comicVineVolumeNamespace = "d072db0d-5410-4e1a-9f1a-b2a1b0c38800";

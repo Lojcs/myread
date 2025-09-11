@@ -1,10 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../settings/screen/settings.dart';
 import '../cubit/home_cubit.dart';
 import '../../../core/helpers/extensions.dart';
-import '../../../core/state/settings_state.dart';
+import '../../settings/cubit/settings_cubit.dart';
 import 'api_key_dialog.dart';
 import 'issue_card.dart';
 
@@ -23,26 +25,29 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed:
+                () => context.navigator.push(
+                  CupertinoPageRoute(builder: (context) => SettingsPage()),
+                ),
+            icon: Icon(Icons.settings),
+          ),
+        ],
+        title: Text(
+          "MyRead",
+          style: GoogleFonts.fugazOne(
+            textStyle: context.textTheme.displayMedium!,
+          ),
+        ),
+      ),
       body: Padding(
         padding: EdgeInsetsGeometry.all(8),
         child: Column(
           children: [
             Center(), // This fixes alignment
-            Card(
-              color: context.colorScheme.surfaceContainerHigh,
-              child: Padding(
-                padding: EdgeInsetsGeometry.symmetric(
-                  horizontal: 30,
-                  vertical: 8,
-                ),
-                child: Text(
-                  "MyRead",
-                  style: GoogleFonts.fugazOne(
-                    textStyle: context.textTheme.displayMedium!,
-                  ),
-                ),
-              ),
-            ),
             Card(
               color: context.colorScheme.surfaceContainer,
               child: BlocSelector<HomeCubit, HomeState, List<String>>(

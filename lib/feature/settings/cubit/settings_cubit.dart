@@ -1,11 +1,12 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:path/path.dart' as path;
 
-import '../../feature/home/service/comicvine_api.dart';
+import '../../home/service/comicvine_api.dart';
 
 @immutable
 class SettingsState {

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/helpers/comic_parser.dart';
-import '../../../core/state/settings_state.dart';
+import '../../settings/cubit/settings_cubit.dart';
 import '../service/comicvine_api.dart';
 import 'issues_cubit.dart';
 

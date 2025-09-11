@@ -51,6 +51,9 @@ dependencies:
   interactive_viewer_2: ^0.0.10
   matrix4_transform: ^4.0.1
   line_icons: ^2.0.3
+  firebase_core: ^4.1.0
+  firebase_auth: ^6.0.2
+  toggle_switch: ^2.3.0
 dependency_overrides:
   interactive_viewer_2:
     git: https://github.com/Lojcs/interactive_viewer_2

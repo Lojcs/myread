@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as pathlib;
 
 import '../../feature/home/cubit/issues_cubit.dart';
-import '../state/settings_state.dart';
+import '../../feature/settings/cubit/settings_cubit.dart';
 import 'comic_parser.dart';
 
 extension ContextExtension on BuildContext {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/helpers/extensions.dart';
-import '../../../core/state/settings_state.dart';
+import '../../settings/cubit/settings_cubit.dart';
 
 class ApiKeyDialog extends StatefulWidget {
   const ApiKeyDialog({super.key});
