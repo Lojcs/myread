@@ -29,6 +29,8 @@ class _ComicViewerState extends State<ComicViewer> {
 
   ComicIssueModel get issue => context.issuesState.state[widget.issueId]!;
 
+  ValueNotifier<bool> loadingDone = ValueNotifier(false);
+
   @override
   Widget build(BuildContext context) {
     if (firstBuild) {
@@ -41,7 +43,6 @@ class _ComicViewerState extends State<ComicViewer> {
       }
       controller = TransformationController(lastTransform)..addListener(() {
         lastTransform = controller.value;
-        print(lastTransform);
       });
     }
     // Window resize correction.
@@ -73,26 +74,46 @@ class _ComicViewerState extends State<ComicViewer> {
           transformationController: controller,
           child: FutureBuilder<List<File>>(
             future: context.issuesState.state[widget.issueId]!.getImages(),
-            builder:
-                (context, snapshot) =>
-                    snapshot.hasData
-                        ? Column(
-                          key: imageKey,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children:
-                              snapshot.data!
-                                  .map(
-                                    (file) => Image(
-                                      width: context.width,
-                                      image: FileImage(file),
-                                    ),
-                                  )
-                                  .toList(),
-                        )
-                        : SizedBox(
-                          width: context.width,
-                          height: double.maxFinite,
-                        ),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                // This is to hide the delay between building the image widgets
+                // and the actual rendering of the images. The delay causes
+                // different images to be at different posistions until all are rendered
+                Future.delayed(Duration(milliseconds: 500), () {
+                  loadingDone.value = true;
+                });
+              }
+              return ListenableBuilder(
+                listenable: loadingDone,
+                builder:
+                    (context, child) => Stack(
+                      children: [
+                        if (snapshot.hasData)
+                          Column(
+                            key: imageKey,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children:
+                                snapshot.data!
+                                    .map(
+                                      (file) => Image(
+                                        width: context.width,
+                                        image: FileImage(file),
+                                      ),
+                                    )
+                                    .toList(),
+                          ),
+                        if (!loadingDone.value)
+                          SizedBox(
+                            width: context.width,
+                            height: double.maxFinite,
+                            child: ColoredBox(
+                              color: context.colorScheme.surface,
+                            ),
+                          ),
+                      ],
+                    ),
+              );
+            },
           ),
         ),
       ),
