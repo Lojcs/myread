@@ -81,6 +81,8 @@ class FirebaseService {
         password: password,
       );
       await _firebaseAuth.currentUser!.reauthenticateWithCredential(credential);
+      final uid = _firebaseAuth.currentUser!.uid;
+      await _firebaseDatabase.ref("/users/$uid").remove();
       await _firebaseAuth.currentUser?.delete();
     }),
   );

@@ -71,7 +71,11 @@ class ComicIssuesData extends Equatable {
         syncTime: DateTime.now(),
       );
     }
-    return this;
+    return ComicIssuesData(
+      issues: _issues,
+      updateTime: updateTime,
+      syncTime: DateTime.now(),
+    );
   }
 
   @override

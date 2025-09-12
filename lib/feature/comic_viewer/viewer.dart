@@ -47,13 +47,18 @@ class _ComicViewerState extends State<ComicViewer> {
       });
     }
     // Window resize correction.
-    final up = lastTransform.getTranslation().y;
+    final translation = lastTransform.getTranslation();
     final scale = controller.value.getScaleOnYAxis();
     final widthScale = context.width / lastWidth;
     controller.value =
         Matrix4.identity()
           ..scaleByDouble(scale, scale, scale, 1)
-          ..leftTranslateByDouble(0, up * widthScale, 0, 1);
+          ..leftTranslateByDouble(
+            translation.x,
+            translation.y * widthScale,
+            0,
+            1,
+          );
 
     lastWidth = context.width;
     return PopScope(
