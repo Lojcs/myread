@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:line_icons/line_icons.dart';
 
 import '../../../core/helpers/extensions.dart';
+import '../../../core/state/error_handler.dart';
 import '../cubit/settings_cubit.dart';
 import '../cubit/settings_sync_cubit.dart';
 
@@ -13,35 +14,68 @@ class SettingsSyncPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final syncCubit = SettingsSyncCubit();
-    return BlocProvider.value(
-      value: syncCubit,
-      child: Scaffold(
-        appBar: AppBar(title: Text("Sync Settings")),
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              BlocBuilder<SettingsSyncCubit, SettingsSyncState>(
-                builder:
-                    (context, state) => ListTile(
-                      leading: Icon(Icons.account_circle),
-                      title: Text(
-                        state.user == null
-                            ? "Add account"
-                            : "Configure account",
+    final syncCubit = SettingsSyncCubit(
+      context.settingsCubit,
+      context.issuesCubit,
+    );
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) syncCubit.close();
+      },
+      child: BlocProvider.value(
+        value: syncCubit,
+        child: Scaffold(
+          appBar: AppBar(title: Text("Sync Settings")),
+          body: SingleChildScrollView(
+            child: BlocBuilder<SettingsSyncCubit, SettingsSyncState>(
+              builder:
+                  (context, state) => Column(
+                    children: [
+                      ListTile(
+                        leading: Icon(Icons.account_circle),
+                        title: Text(
+                          state.user == null
+                              ? "Add account"
+                              : "Configure account",
+                        ),
+                        subtitle: Text("Options for account management."),
+                        onTap: () {
+                          context.errorCubit.setError();
+                          showDialog(
+                            fullscreenDialog: true,
+                            context: context,
+                            builder: (context) => AccountDialog(syncCubit),
+                          );
+                        },
                       ),
-                      subtitle: Text("Options for account management."),
-                      onTap: () {
-                        syncCubit.setError();
-                        showDialog(
-                          fullscreenDialog: true,
-                          context: context,
-                          builder: (context) => AccountDialog(syncCubit),
-                        );
-                      },
-                    ),
-              ),
-            ],
+                      ListTile(
+                        leading: Icon(Icons.cloud_sync),
+                        enabled: state.signedIn,
+                        title: Text("Auto sync"),
+                        subtitle: Text("Auto sync read data."),
+                        onTap: () => syncCubit.setAutoSync(),
+                        trailing: Switch(
+                          value: state.autoSync,
+                          onChanged: (value) => syncCubit.setAutoSync(value),
+                        ),
+                      ),
+                      ListTile(
+                        leading: Icon(Icons.save),
+                        enabled: state.signedIn,
+                        title: Text("Save now"),
+                        subtitle: Text("Save read data to cloud."),
+                        onTap: () => syncCubit.saveData(),
+                      ),
+                      ListTile(
+                        leading: Icon(Icons.download),
+                        enabled: state.signedIn,
+                        title: Text("Load now"),
+                        subtitle: Text("Load read data from cloud."),
+                        onTap: () => syncCubit.fetchData(),
+                      ),
+                    ],
+                  ),
+            ),
           ),
         ),
       ),
@@ -61,8 +95,8 @@ class _AccountDialogState extends State<AccountDialog> {
   bool keyInvalid = false;
   bool createAccount = false;
 
-  late final User? user = widget.syncCubit.state.user;
-  late String email = user?.email ?? "";
+  late final SettingsSyncState state = widget.syncCubit.state;
+  late String email = state.user?.email ?? "";
   String password = "";
   String newPassword = "";
 
@@ -73,11 +107,11 @@ class _AccountDialogState extends State<AccountDialog> {
     content: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: 232,
-          height: 58,
-          child: switch (user) {
-            null => Padding(
+        if (!state.signedIn)
+          SizedBox(
+            width: 232,
+            height: 58,
+            child: Padding(
               padding: EdgeInsetsGeometry.symmetric(vertical: 4),
               child: ToggleButtons(
                 borderRadius: BorderRadius.circular(8),
@@ -89,15 +123,11 @@ class _AccountDialogState extends State<AccountDialog> {
                 onPressed: (i) => setState(() => createAccount = i == 1),
               ),
             ),
-            User(:var email) => Center(
-              child: Text(email!, style: context.textTheme.bodyLarge),
-            ),
-          },
-        ),
+          ),
         Padding(
           padding: EdgeInsetsGeometry.symmetric(vertical: 4),
           child: TextFormField(
-            enabled: user == null,
+            enabled: !state.signedIn,
             initialValue: email,
             decoration: InputDecoration(
               filled: true,
@@ -136,7 +166,7 @@ class _AccountDialogState extends State<AccountDialog> {
             onChanged: (value) => setState(() => password = value),
           ),
         ),
-        if (user != null)
+        if (state.signedIn)
           Padding(
             padding: EdgeInsetsGeometry.symmetric(vertical: 4),
             child: TextField(
@@ -156,9 +186,7 @@ class _AccountDialogState extends State<AccountDialog> {
               onChanged: (value) => setState(() => newPassword = value),
             ),
           ),
-        BlocSelector<SettingsSyncCubit, SettingsSyncState, SettingsSyncError?>(
-          selector: (state) => state.error,
-          bloc: widget.syncCubit,
+        BlocBuilder<FirebaseErrorHandlerCubit, SettingsSyncError?>(
           builder:
               (context, error) =>
                   error != null
@@ -177,7 +205,7 @@ class _AccountDialogState extends State<AccountDialog> {
         onPressed: () => context.navigator.pop(),
         child: Text("Cancel"),
       ),
-      if (user != null)
+      if (state.signedIn)
         TextButton(
           onPressed:
               () => showDialog(
@@ -193,13 +221,13 @@ class _AccountDialogState extends State<AccountDialog> {
         ),
       TextButton(
         onPressed: onDone(),
-        child: user == null ? Text("Submit") : Text("Update"),
+        child: state.signedIn ? Text("Update") : Text("Submit"),
       ),
     ],
   );
 
   VoidCallback? onDone() => switch ((
-    user,
+    state.user,
     email,
     password,
     newPassword,
@@ -262,9 +290,7 @@ class _AccountRemoveDialog extends State<AccountRemoveDialog> {
             onChanged: (value) => setState(() => password = value),
           ),
         ),
-        BlocSelector<SettingsSyncCubit, SettingsSyncState, SettingsSyncError?>(
-          selector: (state) => state.error,
-          bloc: widget.syncCubit,
+        BlocBuilder<FirebaseErrorHandlerCubit, SettingsSyncError?>(
           builder:
               (context, error) =>
                   error != null

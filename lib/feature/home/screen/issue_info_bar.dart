@@ -36,13 +36,15 @@ class ReadButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 32,
-      child: BlocSelector<ComicIssuesCubit, IssuesMap, bool>(
-        selector: (state) => (state[issueId]!.userData?.readRatio ?? 0) > 0.9,
+      child: BlocSelector<ComicIssuesCubit, ComicIssuesData, bool>(
+        selector:
+            (state) =>
+                (state.getUnsynced(issueId)!.userData?.readRatio ?? 0) > 0.9,
         builder:
             (context, read) => IconButton.filledTonal(
               visualDensity: VisualDensity(vertical: -2),
               onPressed:
-                  () => context.issuesState.setReadRatio(issueId, read ? 0 : 1),
+                  () => context.issuesCubit.setReadRatio(issueId, read ? 0 : 1),
               icon:
                   read
                       ? Row(
@@ -75,8 +77,9 @@ class RatingBar extends StatelessWidget {
         margin: EdgeInsets.zero,
         child: Padding(
           padding: EdgeInsetsGeometry.symmetric(horizontal: 4),
-          child: BlocSelector<ComicIssuesCubit, IssuesMap, double?>(
-            selector: (state) => state[issueId]!.userData?.userRating,
+          child: BlocSelector<ComicIssuesCubit, ComicIssuesData, double?>(
+            selector:
+                (state) => state.getUnsynced(issueId)!.userData?.userRating,
             builder:
                 (context, rating) => Row(
                   mainAxisSize: MainAxisSize.min,
@@ -88,7 +91,7 @@ class RatingBar extends StatelessWidget {
                               child: IconButton(
                                 padding: EdgeInsets.zero,
                                 onPressed:
-                                    () => context.issuesState.setRating(
+                                    () => context.issuesCubit.setRating(
                                       issueId,
                                       rating: buttonRating,
                                       clearRating: buttonRating == null,
@@ -121,8 +124,8 @@ class NoteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 32,
-      child: BlocSelector<ComicIssuesCubit, IssuesMap, String>(
-        selector: (state) => state[issueId]!.userData!.userNote,
+      child: BlocSelector<ComicIssuesCubit, ComicIssuesData, String>(
+        selector: (state) => state.getUnsynced(issueId)!.userData!.userNote,
         builder:
             (context, note) => IconButton.filledTonal(
               visualDensity: VisualDensity(vertical: -2),
@@ -182,7 +185,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
     actions: [
       TextButton(
         onPressed: () {
-          context.issuesState.setNote(widget.issueId, note);
+          context.issuesCubit.setNote(widget.issueId, note);
           context.navigator.pop();
         },
         child: Row(

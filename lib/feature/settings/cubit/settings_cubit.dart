@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:path/path.dart' as path;
@@ -9,27 +9,21 @@ import 'package:path/path.dart' as path;
 import '../../home/service/comicvine_api.dart';
 
 @immutable
-class SettingsState {
+class SettingsState extends Equatable {
   final String? apiKey;
-  const SettingsState({this.apiKey});
+  final bool autoSync;
+  const SettingsState({this.apiKey, this.autoSync = false});
 
-  SettingsState copyWith({String? apiKey}) =>
-      SettingsState(apiKey: apiKey ?? this.apiKey);
+  SettingsState copyWith({String? apiKey, bool? autoSync}) => SettingsState(
+    apiKey: apiKey ?? this.apiKey,
+    autoSync: autoSync ?? this.autoSync,
+  );
+
+  @override
+  List<Object?> get props => [apiKey, autoSync];
 }
 
 class SettingsCubit extends HydratedCubit<SettingsState> {
-  static late String _dataPath;
-  static String get dataPath => _dataPath;
-  static Future<void> setDataDir(Directory dir) async {
-    _dataPath = path.join(dir.path, "myread");
-    HydratedBloc.storage = await HydratedStorage.build(
-      storageDirectory:
-          kIsWeb
-              ? HydratedStorageDirectory.web
-              : HydratedStorageDirectory(dir.path),
-    );
-  }
-
   SettingsCubit() : super(SettingsState());
 
   /// Checks if the api key works and saves it if it does. Returns success.
@@ -42,6 +36,8 @@ class SettingsCubit extends HydratedCubit<SettingsState> {
       return false;
     }
   }
+
+  void setAutoSync(bool value) => emit(state.copyWith(autoSync: value));
 
   @override
   SettingsState? fromJson(Map<String, dynamic> json) =>

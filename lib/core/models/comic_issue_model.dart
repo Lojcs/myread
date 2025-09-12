@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
+import '../../feature/settings/service/storage_service.dart';
 import '../helpers/extensions.dart';
 import '../../feature/settings/cubit/settings_cubit.dart';
 
@@ -60,7 +61,7 @@ class ComicIssueModel extends Equatable {
   /// Local file
   final File? file;
 
-  String get dataPath => path.join(SettingsCubit.dataPath, id);
+  String get dataPath => path.join(StorageService.instance.dataPath, id);
 
   Future<List<File>> getImages() async {
     final images =
@@ -181,7 +182,7 @@ class ComicIssueModel extends Equatable {
 
   ComicIssueModel copyWithUserData({
     double? readRatio,
-    DateTime? lastAccessed,
+    DateTime? modifiedTime,
     double? userRating,
     Matrix4? transform,
     bool clearRating = false,
@@ -190,20 +191,32 @@ class ComicIssueModel extends Equatable {
     userData: (userData ?? IssueUserData.blank(issueId: id)).copyWith(
       readRatio: readRatio,
       transform: transform,
-      lastAccessed: lastAccessed,
+      modifiedTime: modifiedTime,
       userRating: userRating,
       clearRating: clearRating,
       userNote: userNote,
     ),
   );
 
-  ComicIssueModel mergeUserData(covariant ComicIssueModel? other) => copyWith(
+  ComicIssueModel merge(covariant ComicIssueModel? other) => copyWith(
+    title: other?.title,
+    name: (other?.name ?? "") != "" ? other?.name : null,
+    volume: other?.volume,
+    number: other?.number,
+    legacyNumber: other?.legacyNumber,
+    pubDate:
+        (other?.pubDate ?? DateTime(0)) != DateTime(0) ? other?.pubDate : null,
+    description: (other?.description ?? "") != "" ? other?.description : null,
+    imagePath: other?.imagePath,
+    imageUrl: other?.imageUrl,
     userData: switch ((userData, other?.userData)) {
       (null, null) => IssueUserData.blank(issueId: id),
       (null, IssueUserData data) => data,
       (IssueUserData data, null) => data,
       (var data1!, var data2!) => data1.merge(data2),
     },
+    file: file ?? other?.file,
+    comicVineId: comicVineId ?? other?.comicVineId,
   );
 }
 
@@ -217,8 +230,8 @@ class IssueUserData extends Equatable {
   /// Last transform applied to the concatanated images of the issue.
   final Matrix4 transform;
 
-  /// When read mark was set.
-  final DateTime lastAccessed;
+  /// When data was last modified
+  final DateTime modifiedTime;
 
   /// User rating. 0-1.
   final double? userRating;
@@ -230,7 +243,7 @@ class IssueUserData extends Equatable {
     required this.issueId,
     required this.readRatio,
     required this.transform,
-    required this.lastAccessed,
+    required this.modifiedTime,
     required this.userRating,
     required this.userNote,
   });
@@ -238,15 +251,17 @@ class IssueUserData extends Equatable {
   IssueUserData.blank({required this.issueId})
     : readRatio = 0,
       transform = Matrix4.identity(),
-      lastAccessed = DateTime.now(),
+      modifiedTime = DateTime.now(),
       userRating = null,
       userNote = "";
 
   IssueUserData.fromJson(Map<String, dynamic> json)
     : issueId = json['id'],
       readRatio = json['readRatio'],
-      transform = Matrix4.fromList(json['transform']),
-      lastAccessed = DateTime.fromMillisecondsSinceEpoch(json['aTime']),
+      transform = Matrix4.fromList(
+        (json['transform'] as List).map((e) => e as double).toList(),
+      ),
+      modifiedTime = DateTime.fromMillisecondsSinceEpoch(json['mTime']),
       userRating = json['rating'],
       userNote = json['note'];
 
@@ -254,7 +269,7 @@ class IssueUserData extends Equatable {
     'id': issueId,
     'readRatio': readRatio,
     'transform': transform.storage,
-    'aTime': lastAccessed.millisecondsSinceEpoch,
+    'mTime': modifiedTime.millisecondsSinceEpoch,
     'rating': userRating,
     'note': userNote,
   };
@@ -263,7 +278,7 @@ class IssueUserData extends Equatable {
     String? issueId,
     double? readRatio,
     Matrix4? transform,
-    DateTime? lastAccessed,
+    DateTime? modifiedTime,
     double? userRating,
     bool clearRating = false,
     String? userNote,
@@ -271,29 +286,20 @@ class IssueUserData extends Equatable {
     issueId: issueId ?? this.issueId,
     readRatio: readRatio ?? this.readRatio,
     transform: transform ?? this.transform,
-    lastAccessed: lastAccessed ?? this.lastAccessed,
+    modifiedTime: modifiedTime ?? this.modifiedTime,
     userRating: clearRating ? null : (userRating ?? this.userRating),
     userNote: userNote ?? this.userNote,
   );
 
-  IssueUserData merge(covariant IssueUserData other) => IssueUserData(
-    issueId: issueId,
-    readRatio: math.max(other.readRatio, readRatio),
-    transform: other.readRatio > readRatio ? other.transform : transform,
-    lastAccessed:
-        other.lastAccessed.compareTo(lastAccessed) > 0
-            ? other.lastAccessed
-            : lastAccessed,
-    userRating: other.userRating ?? userRating,
-    userNote: other.userNote != "" ? other.userNote : userNote,
-  );
+  IssueUserData merge(covariant IssueUserData other) =>
+      modifiedTime.compareTo(other.modifiedTime) < 0 ? other : this;
 
   @override
   List<Object?> get props => [
     issueId,
     readRatio,
     transform,
-    lastAccessed,
+    modifiedTime,
     userRating,
     userNote,
   ];

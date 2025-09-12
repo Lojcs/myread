@@ -1,25 +1,23 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'feature/home/cubit/issues_cubit.dart';
 import 'feature/home/screen/home.dart';
 import 'feature/settings/cubit/settings_cubit.dart';
-import 'firebase_options.dart';
+import 'feature/settings/service/firebase_service.dart';
+import 'feature/settings/service/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    name: "myread",
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  await SettingsCubit.setDataDir(await getTemporaryDirectory());
+  await FirebaseService.init();
+  await StorageService.init();
+  final settingsCubit = SettingsCubit();
   runApp(
     MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => SettingsCubit()),
-        BlocProvider(create: (context) => ComicIssuesCubit()),
+        BlocProvider.value(value: settingsCubit),
+        BlocProvider(create: (context) => ComicIssuesCubit(settingsCubit)),
+        BlocProvider.value(value: FirebaseService.instance.errorHandler),
       ],
       child: const MyApp(),
     ),

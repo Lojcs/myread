@@ -6,6 +6,7 @@ import 'package:path/path.dart' as pathlib;
 
 import '../../feature/home/cubit/issues_cubit.dart';
 import '../../feature/settings/cubit/settings_cubit.dart';
+import '../state/error_handler.dart';
 import 'comic_parser.dart';
 
 extension ContextExtension on BuildContext {
@@ -17,10 +18,12 @@ extension ContextExtension on BuildContext {
 }
 
 extension GlobalStateExtension on BuildContext {
-  SettingsCubit get settingsState =>
+  SettingsCubit get settingsCubit =>
       BlocProvider.of<SettingsCubit>(this, listen: false);
-  ComicIssuesCubit get issuesState =>
+  ComicIssuesCubit get issuesCubit =>
       BlocProvider.of<ComicIssuesCubit>(this, listen: false);
+  FirebaseErrorHandlerCubit get errorCubit =>
+      BlocProvider.of<FirebaseErrorHandlerCubit>(this, listen: false);
 }
 
 extension TweenExtension<T> on Tween<T> {

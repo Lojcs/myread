@@ -55,6 +55,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1092944111670',
     projectId: 'myread-b724e',
     authDomain: 'myread-b724e.firebaseapp.com',
+    databaseURL: 'https://myread-b724e-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'myread-b724e.firebasestorage.app',
   );
 
@@ -63,6 +64,7 @@ class DefaultFirebaseOptions {
     appId: '1:1092944111670:android:52367bebb3469367015097',
     messagingSenderId: '1092944111670',
     projectId: 'myread-b724e',
+    databaseURL: 'https://myread-b724e-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'myread-b724e.firebasestorage.app',
   );
 

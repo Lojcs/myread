@@ -27,7 +27,8 @@ class _ComicViewerState extends State<ComicViewer> {
 
   late final imageKey = GlobalKey();
 
-  ComicIssueModel get issue => context.issuesState.state[widget.issueId]!;
+  late final ComicIssueModel issue =
+      context.issuesCubit.state.getUnsynced(widget.issueId)!;
 
   ValueNotifier<bool> loadingDone = ValueNotifier(false);
 
@@ -63,17 +64,16 @@ class _ComicViewerState extends State<ComicViewer> {
             -lastTransform.getTranslation().y /
             lastTransform.getScaleOnYAxis() /
             imageBox.size.height;
-        context.issuesState.setReadRatio(widget.issueId, ratio);
-        context.issuesState.setTransform(widget.issueId, lastTransform);
+        context.issuesCubit.setReadRatio(widget.issueId, ratio);
+        context.issuesCubit.setTransform(widget.issueId, lastTransform);
+        context.issuesCubit.autoSaveData();
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.issuesState.state[widget.issueId]!.displayName),
-        ),
+        appBar: AppBar(title: Text(issue.displayName)),
         body: InteractiveViewer2(
           transformationController: controller,
           child: FutureBuilder<List<File>>(
-            future: context.issuesState.state[widget.issueId]!.getImages(),
+            future: issue.getImages(),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 // This is to hide the delay between building the image widgets

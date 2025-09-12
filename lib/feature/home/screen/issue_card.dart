@@ -45,12 +45,8 @@ class _IssueCardState extends State<IssueCard> {
     return Stack(
       alignment: AlignmentGeometry.center,
       children: [
-        BlocSelector<
-          ComicIssuesCubit,
-          Map<String, ComicIssueModel>,
-          ComicIssueModel
-        >(
-          selector: (issues) => issues[widget.issueId]!,
+        BlocSelector<ComicIssuesCubit, ComicIssuesData, ComicIssueModel>(
+          selector: (issues) => issues.getUnsynced(widget.issueId)!,
           builder: (context, issue) {
             if (widget.animation != null) {
               return AnimatedBuilder(
@@ -137,12 +133,7 @@ class _IssueCardState extends State<IssueCard> {
           () =>
               widget.large
                   ? issue.file != null
-                      ? context.navigator.push(
-                        MaterialPageRoute(
-                          builder:
-                              (context) => ComicViewer(issueId: widget.issueId),
-                        ),
-                      )
+                      ? pushViewer()
                       : context.navigator.pop()
                   : context.navigator.push(
                     IssueCardDetailRoute(
@@ -160,6 +151,15 @@ class _IssueCardState extends State<IssueCard> {
                   ),
     ),
   );
+
+  void pushViewer() {
+    context.issuesCubit.autoFetchData();
+    context.navigator.push(
+      MaterialPageRoute(
+        builder: (context) => ComicViewer(issueId: widget.issueId),
+      ),
+    );
+  }
 }
 
 class IssueInfoCard extends StatefulWidget {
@@ -228,12 +228,8 @@ class _IssueInfoCardState extends State<IssueInfoCard>
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<
-      ComicIssuesCubit,
-      Map<String, ComicIssueModel>,
-      ComicIssueModel
-    >(
-      selector: (issues) => issues[widget.issueId]!,
+    return BlocSelector<ComicIssuesCubit, ComicIssuesData, ComicIssueModel>(
+      selector: (issues) => issues.getUnsynced(widget.issueId)!,
       builder: (context, issue) {
         if (widget.animation != null) {
           return AnimatedBuilder(
@@ -447,6 +443,7 @@ class IssueCardDetailRoute extends ModalRoute {
     Animation<double> secondaryAnimation,
   ) {
     if (sideBySide == null) {
+      context.issuesCubit.autoFetchData();
       sideBySide = newSideBySide(context);
       offsetTween = Tween(
         begin: getCardOffset(context),
@@ -486,6 +483,7 @@ class IssueCardDetailRoute extends ModalRoute {
         ),
         builder: (context, child) {
           if (animation.status == AnimationStatus.reverse) {
+            context.issuesCubit.autoSaveData();
             primaryAnimation = true;
             offsetTween = Tween(
               begin: getCardOffset(context),

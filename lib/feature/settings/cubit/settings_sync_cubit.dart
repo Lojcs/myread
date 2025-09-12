@@ -1,80 +1,70 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../home/cubit/issues_cubit.dart';
 import '../service/firebase_service.dart';
-
-enum SettingsSyncError {
-  emailInvalid("Email is invalid."),
-  emailNotFound("Email not found."),
-  emailInUse("Email is already registered."),
-  userDisabled("User is disabled."),
-  wrongEmail("Email is wrong."),
-  credentialIncorrect("Password wrong / email not found."),
-  weakPassword("Password is too weak."),
-  wrongPassword("Password is wrong."),
-  disabled("Service disabled."),
-  tokenExpired("Log in again."),
-  networkError("Network error."),
-  rateLimit("Try again later."),
-  unknown("An unknown error occurred.");
-
-  final String message;
-
-  const SettingsSyncError(this.message);
-
-  factory SettingsSyncError.fromFirebaseAuthException(
-    FirebaseAuthException exception,
-  ) => switch (exception.code) {
-    'invalid-email' => emailInvalid,
-    'user-not-found' => SettingsSyncError.emailNotFound,
-    'email-already-in-use' => SettingsSyncError.emailInUse,
-    'user-disabled' => SettingsSyncError.userDisabled,
-    'invalid-credential' ||
-    "INVALID_LOGIN_CREDENTIALS" => SettingsSyncError.credentialIncorrect,
-    'weak-password' => SettingsSyncError.weakPassword,
-    'wrong-password' => SettingsSyncError.wrongPassword,
-    'user-mismatch' => SettingsSyncError.wrongEmail,
-    'operation-not-allowed' => SettingsSyncError.disabled,
-    'user-token-expired' => SettingsSyncError.tokenExpired,
-    'network-request-failed' => SettingsSyncError.networkError,
-    'too-many-requests' => SettingsSyncError.rateLimit,
-    _ => unknown,
-  };
-}
+import 'settings_cubit.dart';
 
 class SettingsSyncState extends Equatable {
   final User? user;
-  final SettingsSyncError? error;
+  final bool autoSync;
 
-  const SettingsSyncState({this.user, this.error});
+  final bool signedIn;
 
+  const SettingsSyncState({this.user, required this.autoSync})
+    : signedIn = user != null;
+
+  SettingsSyncState withAutoSync(bool value) =>
+      SettingsSyncState(user: user, autoSync: value);
   @override
-  List<Object?> get props => [user, error];
+  List<Object?> get props => [user, autoSync];
 }
 
 class SettingsSyncCubit extends Cubit<SettingsSyncState> {
-  SettingsSyncCubit() : super(SettingsSyncState()) {
-    FirebaseAuth.instance.authStateChanges().listen(
-      (user) => emit(SettingsSyncState(user: user)),
+  final SettingsCubit _settingsCubit;
+  final ComicIssuesCubit _issuesCubit;
+  late final StreamSubscription<User?> firebaseListener;
+  late final StreamSubscription<SettingsState> settingsListener;
+
+  SettingsSyncCubit(this._settingsCubit, this._issuesCubit)
+    : super(SettingsSyncState(autoSync: _settingsCubit.state.autoSync)) {
+    firebaseListener = FirebaseAuth.instance.authStateChanges().listen(
+      (user) => emit(SettingsSyncState(user: user, autoSync: state.autoSync)),
     );
+    settingsListener = _settingsCubit.stream.listen((settingsState) {
+      if (settingsState.autoSync != state.autoSync) {
+        emit(state.withAutoSync(settingsState.autoSync));
+      }
+    });
+  }
+  @override
+  Future<void> close() {
+    firebaseListener.cancel();
+    settingsListener.cancel();
+    return super.close();
   }
 
-  late final FirebaseService firebase = FirebaseService(syncCubit: this);
+  late final FirebaseService firebase = FirebaseService.instance;
 
-  void setError([SettingsSyncError? error]) =>
-      emit(SettingsSyncState(user: state.user, error: error));
-
-  Future<bool> createAccount(String email, String password) async =>
+  Future<bool> createAccount(String email, String password) =>
       firebase.createAccount(email, password);
 
-  Future<bool> logIn(String email, String password) async =>
+  Future<bool> logIn(String email, String password) =>
       firebase.logIn(email, password);
 
-  Future<bool> updatePassword(String password, String newPassword) async =>
+  Future<bool> updatePassword(String password, String newPassword) =>
       firebase.updatePassword(password, newPassword);
 
   Future<bool> logOut() => firebase.logOut();
-  Future<bool> deleteAccount(String password) async =>
+  Future<bool> deleteAccount(String password) =>
       firebase.deleteAccount(password);
+
+  void setAutoSync([bool? value]) =>
+      _settingsCubit.setAutoSync(value ?? !state.autoSync);
+
+  Future<void> saveData() => _issuesCubit.saveData();
+  Future<void> fetchData() => _issuesCubit.fetchData();
 }
